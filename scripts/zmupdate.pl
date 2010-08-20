@@ -45,7 +45,7 @@ use constant CHECK_INTERVAL => (1*24*60*60); # Interval between version checks
 #
 # ==========================================================================
 
-use lib '/home/stan/Work/Install/lib/perl5/site_perl/5.8.8'; # Include custom perl install path
+# Include from system perl paths only
 use ZoneMinder::Base qw(:all);
 use ZoneMinder::Config qw(:all);
 use ZoneMinder::Debug qw(:all);

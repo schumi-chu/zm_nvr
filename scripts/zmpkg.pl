@@ -42,7 +42,7 @@ use constant DBG_LEVEL => 0; # 0 is errors, warnings and info only, > 0 for debu
 #
 # ==========================================================================
 
-use lib '/home/stan/Work/Install/lib/perl5/site_perl/5.8.8'; # Include custom perl install path
+# Include from system perl paths only
 use ZoneMinder;
 use DBI;
 use POSIX;

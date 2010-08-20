@@ -45,7 +45,7 @@ use constant START_DELAY => 30; # To give everything else time to start
 #
 # ==========================================================================
 
-use lib '/home/stan/Work/Install/lib/perl5/site_perl/5.8.8'; # Include custom perl install path
+# Include from system perl paths only
 use ZoneMinder;
 use POSIX;
 use DBI;

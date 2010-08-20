@@ -47,7 +47,7 @@ use constant SELECT_TIMEOUT => 0.25;
 #
 # ==========================================================================
 
-use lib '/home/stan/Work/Install/lib/perl5/site_perl/5.8.8'; # Include custom perl install path
+# Include from system perl paths only
 use ZoneMinder::Trigger::Channel::Inet;
 use ZoneMinder::Trigger::Channel::Unix;
 use ZoneMinder::Trigger::Channel::Serial;
