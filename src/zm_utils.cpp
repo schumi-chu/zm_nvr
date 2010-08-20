@@ -22,6 +22,10 @@
 
 #include <stdarg.h>
 
+//schumi#0001
+#include <stdio.h>
+//schumi#0001 end
+
 const std::string stringtf( const char *format, ... )
 {
     va_list ap;
