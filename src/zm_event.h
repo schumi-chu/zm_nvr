@@ -89,6 +89,13 @@ protected:
 	unsigned int	tot_score;
 	unsigned int	max_score;
 	char			path[PATH_MAX];
+//schumi#0003
+#ifdef ZM_RECORD2VIDEO_SCHUMI
+#if HAVE_LIBAVCODEC
+	VideoStream *event_stream;
+#endif
+#endif
+//schumi#0003 end
 
 protected:
 	int				last_db_frame;
@@ -132,6 +139,13 @@ public:
 
 	void AddFrames( int n_frames, Image **images, struct timeval **timestamps );
 	void AddFrame( Image *image, struct timeval timestamp, int score=0, Image *alarm_frame=NULL );
+//schumi#0003
+#ifdef ZM_RECORD2VIDEO_SCHUMI
+#if HAVE_LIBAVCODEC
+	void AddVideo( Image *image, struct timeval timestamp, const char *formats, bool mpg_timed_frames, int score=0, Image *alarm_frame=NULL );
+#endif
+#endif
+//schumi#0003 end
 
 public:
     static const char *getSubPath( struct tm *time )

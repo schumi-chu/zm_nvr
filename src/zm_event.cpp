@@ -75,6 +75,13 @@ Event::Event( Monitor *p_monitor, struct timeval p_start_time, const std::string
     alarm_frames = 0;
     tot_score = 0;
     max_score = 0;
+	//schumi#0003
+#ifdef ZM_RECORD2VIDEO_SCHUMI
+#if HAVE_LIBAVCODEC
+	event_stream=NULL;
+#endif
+#endif
+	//schumi#0003 end
 
     if ( config.use_deep_storage )
     {
@@ -150,6 +157,18 @@ Event::Event( Monitor *p_monitor, struct timeval p_start_time, const std::string
 
 Event::~Event()
 {
+	//schumi#0003
+#ifdef ZM_RECORD2VIDEO_SCHUMI
+#if HAVE_LIBAVCODEC
+	if ( event_stream )
+	{
+		delete event_stream;
+		event_stream=NULL;
+		Info("schumi: stop encoding frames=%d", frames);
+	}
+#endif
+#endif
+	//schumi#0003 end
     if ( frames > last_db_frame )
     {
         struct DeltaTimeval delta_time;
@@ -606,6 +625,137 @@ void Event::AddFrame( Image *image, struct timeval timestamp, int score, Image *
         globfree( &pglob );
     }
 }
+
+//schumi#0003
+#ifdef ZM_RECORD2VIDEO_SCHUMI
+#if HAVE_LIBAVCODEC
+void Event::AddVideo( Image *image, struct timeval timestamp, const char *formats, bool mpg_timed_frames, int score, Image *alarm_image )
+{
+    frames++;
+
+    //static char event_file[PATH_MAX];
+	struct DeltaTimeval delta_time;
+    //snprintf( event_file, sizeof(event_file), capture_file_format, path, frames );
+
+    Debug( 1, "Writing capture frame %d", frames );
+
+	if ( !event_stream )
+	{
+		char event_file[PATH_MAX], file_format[100];
+
+		for (int i=0;formats[i]!='\0';i++)
+		{
+			if (formats[i]=='*' && formats[i+1]!='*' && formats[i-1]!='*')
+			{
+				int j,k=0;
+
+				for(j=i-2;formats[j]!=' ';j--)	;
+				for(j=j+1;j<i;j++)
+					file_format[k++]=formats[j];
+				file_format[k]='\0';
+				break;
+			}
+		}
+		sprintf(event_file,"%s/Event-%d.%s", path, id, file_format);
+		//VideoStream *vs = new VideoStream( (const char*)outfile, format, bitrate, effective_fps, send_image->Colours(), send_image->Width(), send_image->Height() );
+		event_stream = new VideoStream((const char*)event_file, (const char*)file_format, 150000, 15, image->Colours(), image->Width(), image->Height());
+		event_stream->OpenStream();
+		Info("schumi: start encoding: frames=%d", frames);
+	}
+    DELTA_TIMEVAL( delta_time, timestamp, start_time, DT_PREC_3 );
+	event_stream->EncodeFrame( image->Buffer(), image->Size(), mpg_timed_frames, delta_time.delta );
+
+    //bool db_frame = (score>=0) || ((frames%config.bulk_frame_interval)==0) || !frames;
+    end_time = timestamp;
+#if 0
+    if ( db_frame )
+    {
+        const char *frame_type = score>0?"Alarm":(score<0?"Bulk":"Normal");
+
+        Debug( 1, "Adding frame %d to DB", frames );
+        static char sql[BUFSIZ];
+        snprintf( sql, sizeof(sql), "insert into Frames ( EventId, FrameId, Type, TimeStamp, Delta, Score ) values ( %d, %d, '%s', from_unixtime( %ld ), %s%ld.%02ld, %d )", id, frames, frame_type, timestamp.tv_sec, delta_time.positive?"":"-", delta_time.sec, delta_time.fsec, score );
+        if ( mysql_query( &dbconn, sql ) )
+        {
+            Error( "Can't insert frame: %s", mysql_error( &dbconn ) );
+            exit( mysql_errno( &dbconn ) );
+        }
+        last_db_frame = frames;
+
+        // We are writing a bulk frame
+        if ( score < 0 )
+        {
+            snprintf( sql, sizeof(sql), "update Events set Length = %s%ld.%02ld, Frames = %d, AlarmFrames = %d, TotScore = %d, AvgScore = %d, MaxScore = %d where Id = %d", delta_time.positive?"":"-", delta_time.sec, delta_time.fsec, frames, alarm_frames, tot_score, (int)(alarm_frames?(tot_score/alarm_frames):0), max_score, id );
+            if ( mysql_query( &dbconn, sql ) )
+            {
+                Error( "Can't update event: %s", mysql_error( &dbconn ) );
+                exit( mysql_errno( &dbconn ) );
+            }
+        }
+    }
+
+    if ( score > 0 )
+    {
+        alarm_frames++;
+
+        tot_score += score;
+        if ( score > max_score )
+            max_score = score;
+
+        if ( alarm_image )
+        {
+            snprintf( event_file, sizeof(event_file), analyse_file_format, path, frames );
+
+            Debug( 1, "Writing analysis frame %d", frames );
+            WriteFrameImage( alarm_image, timestamp, event_file, true );
+        }
+    }
+
+    if ( config.record_diag_images )
+    {
+        char diag_glob[PATH_MAX] = "";
+
+        snprintf( diag_glob, sizeof(diag_glob), "%s/%d/diag-*.jpg", config.dir_events, monitor->Id() );
+        glob_t pglob;
+        int glob_status = glob( diag_glob, 0, 0, &pglob );
+        if ( glob_status != 0 )
+        {
+            if ( glob_status < 0 )
+            {
+                Error( "Can't glob '%s': %s", diag_glob, strerror(errno) );
+            }
+            else
+            {
+                Debug( 1, "Can't glob '%s': %d", diag_glob, glob_status );
+            }
+        }
+        else
+        {
+            char new_diag_path[PATH_MAX] = "";
+            for ( int i = 0; i < pglob.gl_pathc; i++ )
+            {
+                char *diag_path = pglob.gl_pathv[i];
+
+                char *diag_file = strstr( diag_path, "diag-" );
+
+                if ( diag_file )
+                {
+                    snprintf( new_diag_path, sizeof(new_diag_path), general_file_format, path, frames, diag_file );
+
+                    if ( rename( diag_path, new_diag_path ) < 0 )
+                    {
+                        Error( "Can't rename '%s' to '%s': %s", diag_path, new_diag_path, strerror(errno) );
+                    }
+                }
+            }
+        }
+        globfree( &pglob );
+    }
+#endif
+}
+#endif
+#endif
+//schumi#0003 end
 
 bool EventStream::loadInitialEventData( int monitor_id, time_t event_time )
 {

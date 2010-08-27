@@ -34,6 +34,10 @@ double round(double);
 #endif
 }
 
+//schumi#0003
+#define ZM_RECORD2VIDEO_SCHUMI
+//schumi#0003 end
+
 typedef unsigned char       U8;
 typedef unsigned short      U16;
 typedef unsigned long       U32;

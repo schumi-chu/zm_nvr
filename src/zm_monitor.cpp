@@ -1442,7 +1442,19 @@ bool Monitor::Analyse()
                         {
                             if ( config.bulk_frame_interval > 1 )
                             {
+							//schumi#0003
+							#ifdef ZM_RECORD2VIDEO_SCHUMI
+							#if HAVE_LIBAVCODEC
+								//Info("schumi: shared_data->size=%d, sizeof(SharedData)=%d",shared_data->size,sizeof(SharedData));
+								if ( function==RECORD )
+									event->AddVideo( snap_image, *timestamp, config.ffmpeg_formats, config.mpeg_timed_frames, (event->Frames()<pre_event_count?0:-1) );
+								else
+									event->AddFrame( snap_image, *timestamp, (event->Frames()<pre_event_count?0:-1) );
+							#endif
+							#else
                                 event->AddFrame( snap_image, *timestamp, (event->Frames()<pre_event_count?0:-1) );
+							#endif
+							//schumi#0003 end
                             }
                             else
                             {
@@ -3267,9 +3279,19 @@ bool MonitorStream::sendFrame( Image *image, struct timeval *timestamp )
     {
         if ( !vid_stream )
         {
+		//schumi#0003, for testing
+		#if 1
             vid_stream = new VideoStream( "pipe:", format, bitrate, effective_fps, send_image->Colours(), send_image->Width(), send_image->Height() );
+		#else
+			struct timeval tv;
+			gettimeofday(&tv,NULL);
+			char outfile[100];
+			sprintf(outfile,"/var/www/zm/events/schumi_%d.%s",(int)tv.tv_sec,format);
+            vid_stream = new VideoStream( (const char*)outfile, format, bitrate, effective_fps, send_image->Colours(), send_image->Width(), send_image->Height() );
+		#endif
             fprintf( stdout, "Content-type: %s\r\n\r\n", vid_stream->MimeType() );
             vid_stream->OpenStream();
+		//schumi#0003 end
         }
         static struct timeval base_time;
         struct DeltaTimeval delta_time;
@@ -3518,9 +3540,22 @@ void MonitorStream::runStream()
                 {
                     // Send the next frame
                     Monitor::Snapshot *snap = &monitor->image_buffer[index];
-
+				//schumi#0003, for testing
+				#if 1
                     if ( !sendFrame( snap->image, snap->timestamp ) )
                         zm_terminate = true;
+				#else
+					static unsigned int tmp=0;
+					tmp+=1;
+					char imgfile[100];
+					if (tmp%2)
+						strcpy(imgfile,"/home/schumi/tmp/021-capture.jpg");
+					else
+						strcpy(imgfile,"/home/schumi/tmp/001-capture.jpg");
+                    if ( !sendFrame( (const char*)imgfile, snap->timestamp ) )
+                        zm_terminate = true;
+				#endif
+				//schumi#0003 end
                     memcpy( &last_frame_timestamp, snap->timestamp, sizeof(last_frame_timestamp) );
                     frame_sent = true;
 
