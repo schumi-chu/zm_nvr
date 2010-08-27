@@ -131,7 +131,11 @@ void VideoStream::SetupCodec( int colours, int width, int height, int bitrate, d
 		if ( c->gop_size < 3 )
 			c->gop_size = 3;
 		// some formats want stream headers to be seperate
-		if(!strcmp(ofc->oformat->name, "mp4") || !strcmp(ofc->oformat->name, "mov") || !strcmp(ofc->oformat->name, "3gp"))
+		//schumi#0003
+		//if(!strcmp(ofc->oformat->name, "mp4") || !strcmp(ofc->oformat->name, "mov") || !strcmp(ofc->oformat->name, "3gp"))
+		if(!strcmp(ofc->oformat->name, "mp4") || !strcmp(ofc->oformat->name, "mov") ||
+		   !strcmp(ofc->oformat->name, "3gp") || !strcmp(ofc->oformat->name, "webm"))
+		//schumi#0003 end
 			c->flags |= CODEC_FLAG_GLOBAL_HEADER;
 	}
 }
