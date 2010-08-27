@@ -235,10 +235,10 @@ function outputVideoStream( $id, $src, $width, $height, $format, $title="" )
         switch( $format )
         {
             case 'asf' :
+            case 'wmv' :
                 $mimeType = "video/x-ms-asf";
                 break;
             case 'avi' :
-            case 'wmv' :
                 $mimeType = "video/x-msvideo";
                 break;
             case 'mov' :
@@ -275,7 +275,7 @@ function outputVideoStream( $id, $src, $width, $height, $format, $title="" )
 ?>
 <object id="<?= $id ?>" width="<?= validNum($width) ?>" height="<?= validNum($height) ?>"
 classid="CLSID:22D6F312-B0F6-11D0-94AB-0080C74C7E95"
-codebase="http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=6,0,02,902"
+codebase="http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=6,4,5,715"
 standby="Loading Microsoft Windows Media Player components..."
 type="<?= $mimeType ?>">
 <param name="FileName" value="<?= $src ?>">
@@ -325,7 +325,7 @@ controller="true"
 ?>
 <object id="<?= $id ?>" width="<?= $width ?>" height="<?= $height ?>"
 classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"
-codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
+codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab"
 type="<?= $mimeType ?>">
 <param name="movie" value="<?= $src ?>">
 <param name=quality value="high">

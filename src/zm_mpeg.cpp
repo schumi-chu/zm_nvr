@@ -28,10 +28,19 @@
 bool VideoStream::initialised = false;
 
 VideoStream::MimeData VideoStream::mime_data[] = {
+//schumi#0002
 	{ "asf", "video/x-ms-asf" },
+	{ "wmv", "video/x-ms-asf" },
 	{ "swf", "application/x-shockwave-flash" },
 	{ "mp4", "video/mp4" },
-	{ "move", "video/quicktime" }
+	//{ "move", "video/quicktime" }
+	//{ "psp", "video/mp4" },
+	{ "mov", "video/quicktime" },
+	{ "mpeg", "video/mpeg" },
+	{ "avi", "video/x-msvideo" },	// don't support streaming??
+	{ "movie", "video/x-sgi-movie" },
+	{ "h264", "video/h264" },
+//schumi#0002 end
 };
 
 void VideoStream::Initialise()
@@ -46,12 +55,16 @@ void VideoStream::SetupFormat( const char *p_filename, const char *p_format )
 	format = p_format;
 
 	/* auto detect the output format from the name. default is mpeg. */
-	of = guess_format( format, NULL, NULL);
+	//schumi#0002
+	//of = guess_format( format, NULL, NULL);
+	of = av_guess_format( format, NULL, NULL);
 	if ( !of )
 	{
 		Warning( "Could not deduce output format from file extension: using mpeg" );
-		of = guess_format("mpeg", NULL, NULL);
+		//of = guess_format("mpeg", NULL, NULL);
+		of = av_guess_format("mpeg", NULL, NULL);
 	}
+	//schumi#0002 end
 	if ( !of )
 	{
 		Fatal( "Could not find suitable output format" );
@@ -64,6 +77,10 @@ void VideoStream::SetupFormat( const char *p_filename, const char *p_format )
 		Fatal( "Memory error" );
 	}
 	ofc->oformat = of;
+	//schumi#0002
+	Info("schumi: AVOutputFormat: name:%s, long_name:%s, mime_type:%s, externsions: %s, video_codec: %d",
+		of->name, of->long_name, of->mime_type, of->extensions, of->video_codec);
+	//schumi#0002 end
 	snprintf( ofc->filename, sizeof(ofc->filename), "%s", filename );
 }
 
