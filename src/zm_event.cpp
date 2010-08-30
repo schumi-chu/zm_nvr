@@ -629,19 +629,18 @@ void Event::AddFrame( Image *image, struct timeval timestamp, int score, Image *
 //schumi#0003
 #ifdef ZM_RECORD2VIDEO_SCHUMI
 #if HAVE_LIBAVCODEC
-void Event::AddVideo( Image *image, struct timeval timestamp, const char *formats, bool mpg_timed_frames, int score, Image *alarm_image )
+void Event::AddVideo( Image *image, struct timeval timestamp, int score, Image *alarm_image )
 {
     frames++;
 
-    //static char event_file[PATH_MAX];
 	struct DeltaTimeval delta_time;
-    //snprintf( event_file, sizeof(event_file), capture_file_format, path, frames );
 
     Debug( 1, "Writing capture frame %d", frames );
 
 	if ( !event_stream )
 	{
-		char event_file[PATH_MAX], file_format[100];
+		char event_video[PATH_MAX], file_format[100];
+		const char *formats=config.ffmpeg_formats;
 
 		for (int i=0;formats[i]!='\0';i++)
 		{
@@ -656,23 +655,26 @@ void Event::AddVideo( Image *image, struct timeval timestamp, const char *format
 				break;
 			}
 		}
-		sprintf(event_file,"%s/Event-%d.%s", path, id, file_format);
+		sprintf(event_video,"%s/Event-%d.%s", path, id, file_format);
 		//VideoStream *vs = new VideoStream( (const char*)outfile, format, bitrate, effective_fps, send_image->Colours(), send_image->Width(), send_image->Height() );
-		event_stream = new VideoStream((const char*)event_file, (const char*)file_format, 150000, 15, image->Colours(), image->Width(), image->Height());
+		event_stream = new VideoStream((const char*)event_video, (const char*)file_format, 150000, 15, image->Colours(), image->Width(), image->Height());
 		event_stream->OpenStream();
 		Info("schumi: start encoding: frames=%d", frames);
 	}
     DELTA_TIMEVAL( delta_time, timestamp, start_time, DT_PREC_3 );
-	event_stream->EncodeFrame( image->Buffer(), image->Size(), mpg_timed_frames, delta_time.delta );
+	event_stream->EncodeFrame( image->Buffer(), image->Size(), config.mpeg_timed_frames, delta_time.delta );
 
-    //bool db_frame = (score>=0) || ((frames%config.bulk_frame_interval)==0) || !frames;
+    bool db_frame = (score>=0) || ((frames%config.bulk_frame_interval)==0) || !frames;
     end_time = timestamp;
-#if 0
+
     if ( db_frame )
     {
+		static char event_file[PATH_MAX];
+		snprintf( event_file, sizeof(event_file), capture_file_format, path, frames );
         const char *frame_type = score>0?"Alarm":(score<0?"Bulk":"Normal");
 
         Debug( 1, "Adding frame %d to DB", frames );
+		WriteFrameImage( image, timestamp, event_file );
         static char sql[BUFSIZ];
         snprintf( sql, sizeof(sql), "insert into Frames ( EventId, FrameId, Type, TimeStamp, Delta, Score ) values ( %d, %d, '%s', from_unixtime( %ld ), %s%ld.%02ld, %d )", id, frames, frame_type, timestamp.tv_sec, delta_time.positive?"":"-", delta_time.sec, delta_time.fsec, score );
         if ( mysql_query( &dbconn, sql ) )
@@ -694,6 +696,7 @@ void Event::AddVideo( Image *image, struct timeval timestamp, const char *format
         }
     }
 
+#if 0
     if ( score > 0 )
     {
         alarm_frames++;

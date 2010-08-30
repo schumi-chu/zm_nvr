@@ -142,7 +142,11 @@ public:
 //schumi#0003
 #ifdef ZM_RECORD2VIDEO_SCHUMI
 #if HAVE_LIBAVCODEC
-	void AddVideo( Image *image, struct timeval timestamp, const char *formats, bool mpg_timed_frames, int score=0, Image *alarm_frame=NULL );
+	void AddVideo( Image *image, struct timeval timestamp, int score=0, Image *alarm_frame=NULL );
+	void GetEventPath( char *event_dir, int len, int frame_num)
+	{
+		snprintf( event_dir, len, capture_file_format, path, frame_num);
+	}
 #endif
 #endif
 //schumi#0003 end

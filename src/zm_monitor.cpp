@@ -320,6 +320,9 @@ Monitor::Monitor(
     first_alarm_count = 0;
     last_alarm_count = 0;
     state = IDLE;
+	//schumi#0003
+	last_index=0;
+	//schumi#0003 end
 
     if ( alarm_frame_count < 1 )
         alarm_frame_count = 1;
@@ -1036,8 +1039,9 @@ bool Monitor::Analyse()
         Info( "%s: %d - Processing at %.2f fps", name, image_count, fps );
         last_fps_time = now.tv_sec;
     }
-
-    int index;
+//schumi#0003
+    //int index;
+//schumi#0003 end
     if ( config.opt_adaptive_skip )
     {
         int read_margin = shared_data->last_read_index - shared_data->last_write_index;
@@ -1055,7 +1059,7 @@ bool Monitor::Analyse()
         Debug( 4, "RI:%d, WI: %d, PF = %d, RM = %d, Step = %d", shared_data->last_read_index, shared_data->last_write_index, pending_frames, read_margin, step );
         if ( step <= pending_frames )
         {
-            index = (shared_data->last_read_index+step)%image_buffer_count;
+            last_index = (shared_data->last_read_index+step)%image_buffer_count;
         }
         else
         {
@@ -1063,15 +1067,15 @@ bool Monitor::Analyse()
             {
                 Warning( "Approaching buffer overrun, consider slowing capture, simplifying analysis or increasing ring buffer size" );
             }
-            index = shared_data->last_write_index%image_buffer_count;
+            last_index = shared_data->last_write_index%image_buffer_count;
         }
     }
     else
     {
-        index = shared_data->last_write_index%image_buffer_count;
+        last_index = shared_data->last_write_index%image_buffer_count;
     }
 
-    Snapshot *snap = &image_buffer[index];
+    Snapshot *snap = &image_buffer[last_index];
     struct timeval *timestamp = snap->timestamp;
     Image *snap_image = snap->image;
 
@@ -1274,7 +1278,7 @@ bool Monitor::Analyse()
                         //if ( config.overlap_timed_events )
                         if ( false )
                         {
-                            int pre_index = ((index+image_buffer_count)-pre_event_count)%image_buffer_count;
+                            int pre_index = ((last_index+image_buffer_count)-pre_event_count)%image_buffer_count;
                             for ( int i = 0; i < pre_event_count; i++ )
                             {
                                 timestamps[i] = image_buffer[pre_index].timestamp;
@@ -1298,9 +1302,9 @@ bool Monitor::Analyse()
                             {
                                 int pre_index;
                                 if ( alarm_frame_count > 1 )
-                                    pre_index = ((index+image_buffer_count)-((alarm_frame_count-1)+pre_event_count))%image_buffer_count;
+                                    pre_index = ((last_index+image_buffer_count)-((alarm_frame_count-1)+pre_event_count))%image_buffer_count;
                                 else
-                                    pre_index = ((index+image_buffer_count)-pre_event_count)%image_buffer_count;
+                                    pre_index = ((last_index+image_buffer_count)-pre_event_count)%image_buffer_count;
 
                                 event = new Event( this, *(image_buffer[pre_index].timestamp), cause, noteSetMap );
                                 shared_data->last_event = event->Id();
@@ -1447,7 +1451,7 @@ bool Monitor::Analyse()
 							#if HAVE_LIBAVCODEC
 								//Info("schumi: shared_data->size=%d, sizeof(SharedData)=%d",shared_data->size,sizeof(SharedData));
 								if ( function==RECORD )
-									event->AddVideo( snap_image, *timestamp, config.ffmpeg_formats, config.mpeg_timed_frames, (event->Frames()<pre_event_count?0:-1) );
+									event->AddVideo( snap_image, *timestamp, (event->Frames()<pre_event_count?0:-1) );
 								else
 									event->AddFrame( snap_image, *timestamp, (event->Frames()<pre_event_count?0:-1) );
 							#endif
@@ -1499,8 +1503,8 @@ bool Monitor::Analyse()
         last_signal = signal;
     }
 
-    shared_data->last_read_index = index%image_buffer_count;
-    //shared_data->last_read_time = image_buffer[index].timestamp->tv_sec;
+    shared_data->last_read_index = last_index%image_buffer_count;
+    //shared_data->last_read_time = image_buffer[last_index].timestamp->tv_sec;
     shared_data->last_read_time = now.tv_sec;
     image_count++;
 
@@ -2623,6 +2627,15 @@ bool Monitor::closeEvent()
 {
     if ( event )
     {
+		//schumi#0003
+        if ( function == RECORD && event->Frames()%config.bulk_frame_interval!=0 )
+		{
+			char file[PATH_MAX];
+
+			event->GetEventPath(file, sizeof(file), event->Frames());
+			event->WriteFrameImage( image_buffer[last_index].image, *image_buffer[last_index].timestamp, file );
+		}
+		//schumi#0003 end
         if ( function == RECORD || function == MOCORD )
         {
             gettimeofday( &(event->EndTime()), NULL );
