@@ -128,11 +128,15 @@ int RtpCtrlThread::recvPacket( const unsigned char *packet, ssize_t packetLen )
                             return( -1 );
                         }
                     }
-                    int paddedLen = 4+2+item->len+1; // Add null byte
+					//schumi#0004
+                    //int paddedLen = 4+2+item->len+1; // Add null byte
+                    int paddedLen = 2+item->len+1; // Add null byte, not include header
                     paddedLen = (((paddedLen-1)/4)+1)*4;
                     Debug( 5, "RTCP PL:%d", paddedLen );
                     sdesPtr += paddedLen;
                     contentLen -= paddedLen;
+					len = (paddedLen/4);
+					//schumi#0004 end
                 }
             }
             break;

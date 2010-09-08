@@ -62,6 +62,14 @@ bool RtspThread::sendCommand( std::string message )
             return( false );
         }
     }
+
+    //schumi#0004
+#if 0
+	StringVector lines = split( message, "\r\n" );
+    for ( size_t i = 0; i < lines.size(); i++ )
+		Info("schumi: %s", lines[i].c_str());
+#endif
+	//schumi#0004 end
     return( true );
 }
 
@@ -92,6 +100,15 @@ bool RtspThread::recvResponse( std::string &response )
         Error( "Unexpected response code %d, text is '%s'", respCode, respText );
         return( false );
     }
+
+    //schumi#0004
+#if 0
+	StringVector lines = split( response, "\r\n" );
+    Info("schumi: Received RTSP response: %d bytes", response.size() );
+    for ( size_t i = 0; i < lines.size(); i++ )
+		Info("schumi: %s", lines[i].c_str());
+#endif
+	//schumi#0004 end
     return( true );
 }
 
@@ -461,33 +478,37 @@ int RtspThread::run()
         return( -1 );
 
     lines = split( response, "\r\n" );
+	//schumi#0004
     char *rtpInfo = 0;
     for ( size_t i = 0; i < lines.size(); i++ )
     {
         sscanf( lines[i].c_str(), "RTP-Info: %as", &rtpInfo );
     }
 
-    if ( !rtpInfo )
-        Fatal( "Unable to get RTP Info identifier from response '%s'", response.c_str() );
-
     Debug( 2, "Got RTP Info %s", rtpInfo );
 
     int seq = 0;
     unsigned long rtpTime = 0;
-    parts = split( rtpInfo, ";" );
-    for ( size_t i = 0; i < parts.size(); i++ )
-    {
-        if ( startsWith( parts[i], "seq=" ) )
-        {
-            StringVector subparts = split( parts[i], "=" );
-            seq = strtol( subparts[1].c_str(), NULL, 10 );
-        }
-        else if ( startsWith( parts[i], "rtptime=" ) )
-        {
-            StringVector subparts = split( parts[i], "=" );
-            rtpTime = strtol( subparts[1].c_str(), NULL, 10 );
-        }
-    }
+	if (rtpInfo)
+	{
+    	parts = split( rtpInfo, ";" );
+    	for ( size_t i = 0; i < parts.size(); i++ )
+    	{
+        	if ( startsWith( parts[i], "seq=" ) )
+        	{
+            	StringVector subparts = split( parts[i], "=" );
+            	seq = strtol( subparts[1].c_str(), NULL, 10 );
+        	}
+        	else if ( startsWith( parts[i], "rtptime=" ) )
+        	{
+            	StringVector subparts = split( parts[i], "=" );
+            	rtpTime = strtol( subparts[1].c_str(), NULL, 10 );
+        	}
+    	}
+	}
+	else
+		Info( "Unable to get RTP Info identifier from response '%s'", response.c_str() );
+	//schumi#0004 end
 
     Debug( 2, "RTSP Seq is %d", seq );
     Debug( 2, "RTSP Rtptime is %ld", rtpTime );
@@ -583,16 +604,24 @@ int RtspThread::run()
                         }
                         if ( channel == remoteChannels[0] )
                         {
+							//schumi#0004
                             Debug( 4, "Got %d bytes on data channel %d, packet length is %d", buffer.size(), channel, len );
                             Hexdump( 4, (char *)buffer, 16 );
-                            rtpDataThread.recvPacket( buffer+4, len );
+                            bool ret=rtpDataThread.recvPacket( buffer+4, len );
                             Debug( 4, "Received" );
+							if (!ret)
+                            	Info("schumi: Receive error in channel %d", channel);
+							//schumi#0004 end
                         }
                         else if ( channel == remoteChannels[1] )
                         {
+							//schumi#0004
                             len = ntohs( *((unsigned short *)(buffer+2)) );
                             Debug( 4, "Got %d bytes on control channel %d", nBytes, channel );
-                            rtpCtrlThread.recvPackets( buffer+4, len );
+                            int ret=rtpCtrlThread.recvPackets( buffer+4, len );
+							if (ret)
+                            	Info("schumi: un-Received %d bytes in channel %d", ret, channel);
+							//schumi#0004 end
                         }
                         else
                         {

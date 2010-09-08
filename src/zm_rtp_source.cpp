@@ -257,8 +257,45 @@ bool RtpSource::handlePacket( const unsigned char *packet, size_t packetLen )
     if ( updateSeq( ntohs(rtpHeader->seqN) ) )
     {
         Hexdump( 4, packet+sizeof(RtpDataHeader), 16 );
+		//schumi#0004
         if ( mFrameGood )
-            mFrame.append( packet+sizeof(RtpDataHeader), packetLen-sizeof(RtpDataHeader) ); 
+		{
+    		if ( rtpHeader->pt==96 )	// for h264
+			{
+				unsigned char *rtp_payload=(unsigned char*)packet+sizeof(RtpDataHeader);
+				unsigned char h264_start_code[4]={0x00, 0x00, 0x00, 0x01};
+				int nalu_type=rtp_payload[0]&0x1f;
+
+				if ( nalu_type==24 )	// STAP-A type, IDR slice
+				{
+            		mFrame.append( h264_start_code, sizeof(h264_start_code) );
+					int nal_size=(rtp_payload[1]<<8)|rtp_payload[2];	// sps size
+            		mFrame.append( &rtp_payload[3], nal_size );
+					rtp_payload+=(3+nal_size);
+            		mFrame.append( h264_start_code, sizeof(h264_start_code) );
+					nal_size=(rtp_payload[0]<<8)|rtp_payload[1];		// pps size
+            		mFrame.append( &rtp_payload[2], nal_size );
+					rtp_payload+=(2+nal_size);
+				}
+				else if ( nalu_type==28 )	// FU-A type, must do re-fragmentation
+				{
+					if ( rtp_payload[1]&0x80 )	// for start packet
+					{
+            			mFrame.append( h264_start_code, sizeof(h264_start_code) );	// for IDR slice
+						rtp_payload[1]=(rtp_payload[0]&0xe0) | (rtp_payload[1]&0x1f);	// parsing the real nal header
+						rtp_payload++;
+					}
+					else
+						rtp_payload+=2;	// for middle, end packet
+				}
+				else if ( nalu_type>0 && nalu_type<6 )	// type 1~5 slice
+            		mFrame.append( h264_start_code, sizeof(h264_start_code) );
+            	mFrame.append( rtp_payload, packet+packetLen-rtp_payload );
+			}
+			else
+            	mFrame.append( packet+sizeof(RtpDataHeader), packetLen-sizeof(RtpDataHeader) );
+		}
+		//schumi#0004 end
         Hexdump( 4, mFrame.head(), 16 );
 
         if ( rtpHeader->m )
